@@ -29,11 +29,18 @@ def load_module(path: str, *, name="funpad.user.scratch"):
     import importlib.util
 
     spec = importlib.util.spec_from_file_location(name, path)
+
+    if not spec:
+        raise ImportError(f"Could not load module {name} from {path}")
+
     module = importlib.util.module_from_spec(spec)
 
     # I don't think this is necesssary
     # May be used only for caching?
     # sys.modules[name] = module
+
+    if not spec.loader:
+        raise ImportError(f"Could not load module {name} from {path}")
 
     spec.loader.exec_module(module)
 
@@ -42,7 +49,7 @@ def load_module(path: str, *, name="funpad.user.scratch"):
 
 class FileWatcher:
     path: str
-    thread: threading.Thread = None
+    thread: threading.Thread | None = None
     event = threading.Event()
 
     def __init__(self, path):
@@ -68,23 +75,23 @@ class FileWatcher:
 
 class Runner:
     scrach_module_name = "funpad.user.scratch"
-    thread: threading.Thread = None
+    thread: threading.Thread | None = None
     i = 0
     ready_event = threading.Event()
     base_locals = {}
     local_sources = weakref.WeakKeyDictionary()
 
-    def __init__(self, path, *, locals=None):
+    def __init__(self, path, *, locals={}):
         self.locals = locals
         self.path = path
 
     def _execute(self):
-        self._iter()
+        self._run()
 
         # self.ready_event.set()
 
         for _ in watchfiles.watch(self.path):
-            self._iter()
+            self._run()
 
     def _filter_member(self, key, value, old_value):
         if key.startswith("__"):
