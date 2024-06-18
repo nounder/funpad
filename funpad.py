@@ -2,14 +2,11 @@ import sys
 import inspect
 import logging
 import threading
-import inspect
-from typing import Generator
 import weakref
 import watchfiles
-from traitlets.config import Config
-import IPython
 import rich
 import rich.traceback
+
 
 rich.traceback.install(show_locals=True)
 
@@ -30,7 +27,6 @@ def load_module(path: str, *, name="funpad.user.scratch"):
     TODO: Use runpy maybe?
     """
     import importlib.util
-    import sys
 
     spec = importlib.util.spec_from_file_location(name, path)
     module = importlib.util.module_from_spec(spec)
