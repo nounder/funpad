@@ -102,36 +102,41 @@ class Runner:
         if source:
             module = getattr(value, "__module__", None)
 
-            if module and module.startswith(self.scrach_module_name + "_"):
-                if old_value:
-                    try:
-                        old_source = self.local_sources.get(old_value)
-                        new_source = self._get_source(value)
+            # Ignore values from other modules
+            if not module or not module.startswith(self.scrach_module_name + "_"):
+                return False
 
-                        logger.debug("Old source: %s", old_source)
-                        logger.debug("New source: %s", new_source)
+            if old_value:
+                # always load and execute main
+                if key == "main":
+                    return True
 
-                        if old_source == new_source:
-                            return False
+                try:
+                    old_source = self.local_sources.get(old_value)
+                    new_source = self._get_source(value)
 
-                    except TypeError as e:
-                        logger.error(e)
+                    logger.debug("Old source: %s", old_source)
+                    logger.debug("New source: %s", new_source)
+
+                    if old_source == new_source:
+                        return False
+
+                except TypeError as e:
+                    logger.error(e)
 
         if old_value == value:
             return False
 
         return True
 
-    def _iter(self):
-        # self.i += 1
-
-        iter_locals = {}
+    def _run(self):
+        self.i += 1
 
         try:
             module_name = self.scrach_module_name + "_" + str(self.i)
             module = load_module(self.path, name=module_name)
 
-            iter_locals = inspect.getmembers(module)
+            run_locals = inspect.getmembers(module)
         except Exception as e:
             # TODO: print pretty stacktrace
             raise e
@@ -140,7 +145,7 @@ class Runner:
 
         new_locals = {}
 
-        for key, value in iter_locals:
+        for key, value in run_locals:
             old_value = self.base_locals.get(key)
 
             if not self._filter_member(key, value, old_value):
