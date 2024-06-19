@@ -47,32 +47,6 @@ def load_module(path: str, *, name="funpad.user.scratch"):
     return module
 
 
-class FileWatcher:
-    path: str
-    thread: threading.Thread | None = None
-    event = threading.Event()
-
-    def __init__(self, path):
-        self.path = path
-
-    def watch_file_changes(self):
-        for _ in watchfiles.watch(self.path):
-            self.event.set()
-
-    def wait(self):
-        self.event.wait()
-        self.event.clear()
-
-    def start(self):
-        self.thread = threading.Thread(
-            target=self.watch_file_changes, name="file_watcher"
-        )
-        self.thread.daemon = True
-        self.thread.start()
-
-        return self
-
-
 class Runner:
     scrach_module_name = "funpad.user.scratch"
     thread: threading.Thread | None = None
@@ -202,15 +176,6 @@ class Runner:
             source = None
 
         return source
-
-
-# runner.ready_event.wait(i
-
-# # doesnt work
-# config = Config()
-# config.InteractiveShellApp.extensions = ["autoreload", "rich"]
-# config.InteractiveShellEmbed.extensions = ["autoreload", "rich"]
-# config.TerminalInteractiveShell.extensions = ["autoreload", "rich"]
 
 
 def start_ipython(local_ns):
