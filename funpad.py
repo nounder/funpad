@@ -6,6 +6,9 @@ import weakref
 import watchfiles
 import rich
 import rich.traceback
+import asyncio
+import aiohttp.web
+import datetime
 
 
 rich.traceback.install(show_locals=True)
@@ -45,6 +48,55 @@ def load_module(path: str, *, name="funpad.user.scratch"):
     spec.loader.exec_module(module)
 
     return module
+
+
+class WebServer:
+    def __init__(self, runner: "Runner", *, host="127.0.0.1", port=8080):
+        self.runner = runner
+        self.app = aiohttp.web.Application()
+        self.host = host
+        self.port = port
+
+        self.setup_routes()
+
+    def setup_routes(self):
+        self.app.router.add_get("/", self.GET_home)
+        self.app.router.add_get("/locals", self.GET_locals)
+        self.app.router.add_get("/events", self.GET_events)
+
+    async def GET_home(self, request):
+        return aiohttp.web.json_response({})
+
+    async def GET_locals(self, request):
+        return aiohttp.web.json_response({})
+
+    async def GET_events(self, request):
+        async def event_stream(response):
+            while True:
+                data = f"data: {datetime.datetime.now().isoformat()}\n\n"
+                await response.write(data.encode("utf-8"))
+                await asyncio.sleep(1)
+
+        response = aiohttp.web.StreamResponse(
+            status=200, reason="OK", headers={"Content-Type": "text/event-stream"}
+        )
+
+        await response.prepare(request)
+        await event_stream(response)
+
+        return response
+
+    def _serve(self):
+        aiohttp.web.run_app(
+            self.app, host=self.host, port=self.port, print=None, handle_signals=False
+        )
+
+    def start(self):
+        self.thread = threading.Thread(target=self._serve, name="web_server")
+        self.thread.daemon = True
+        self.thread.start()
+
+        return self
 
 
 class Runner:
@@ -204,8 +256,18 @@ def main():
 
     local_ns = locals()
 
-    runner = Runner(PATH, locals=local_ns).start()
+    runner = Runner(PATH, locals=local_ns)
 
+    host = "127.0.0.1"
+    port = 8080
+    server = WebServer(runner, host=host, port=port)
+
+    print(f"Web Server listening on http://{host}:{port}")
+
+    runner.start()
+    server.start()
+
+    # we start REPL in a main thread
     start_ipython(local_ns)
 
 
